@@ -96,8 +96,15 @@ export default function Home() {
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </Head>
       <header className="container">
-        <h1>Guinda Time Pivot</h1>
-        <p>Arrastra y suelta tu CSV exportado de ClickUp o selecciónalo con el botón.</p>
+        <div className="header-content">
+          <div className="logo-section">
+            <img src="/logo-guinda.png" alt="Guinda" className="logo" />
+            <div className="title-section">
+              <h1>Guinda Time Pivot</h1>
+              <p>Arrastra y suelta tu CSV exportado de ClickUp o selecciónalo con el botón.</p>
+            </div>
+          </div>
+        </div>
       </header>
       <main className="container">
         <section
