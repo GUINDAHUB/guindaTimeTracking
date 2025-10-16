@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guinda Time Pivot</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="container">
+    <h1>Guinda Time Pivot</h1>
+    <p>Arrastra y suelta tu CSV exportado de ClickUp o selecciónalo con el botón.</p>
+  </header>
+
+  <main class="container">
+    <section class="uploader" id="dropzone">
+      <div class="uploader__inner">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 16V4m0 0l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 16v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p><strong>Suelta el CSV aquí</strong> o</p>
+        <label class="btn">
+          Seleccionar archivo
+          <input type="file" id="file-input" accept=".csv" hidden>
+        </label>
+        <p class="hint">Usa columnas "Folder Name" (cliente), "User Name" o "Username" (empleado), y "Time Tracked" en milisegundos.</p>
+      </div>
+    </section>
+
+    <section class="controls" id="controls" hidden>
+      <div class="controls__row">
+        <button id="export-xlsx" class="btn">Exportar Excel</button>
+        <button id="export-csv" class="btn btn--secondary">Exportar CSV</button>
+        <div class="spacer"></div>
+        <label class="switch">
+          <input type="checkbox" id="toggle-format">
+          <span>Mostrar en horas decimales</span>
+        </label>
+      </div>
+    </section>
+
+    <section id="summary" class="summary" hidden></section>
+
+    <section class="table-wrapper" id="table-wrapper" hidden>
+      <table id="pivot-table"></table>
+    </section>
+  </main>
+
+  <footer class="container footnote">
+    <small>Datos procesados localmente en tu navegador. No se suben a ningún servidor.</small>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+
+

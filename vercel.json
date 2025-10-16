@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "guinda-time-tracking",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "outputDirectory": ".next",
+  "framework": "nextjs"
+}
+
+
