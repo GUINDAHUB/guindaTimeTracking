@@ -18,6 +18,99 @@ body {
   color: var(--text);
 }
 
+/* Layout principal con sidebar */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 240px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.main-content {
+  flex: 1;
+  padding: 0;
+}
+
+/* Sidebar meses */
+.month-nav {
+  padding: 0 20px;
+}
+
+.month-nav h3 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.month-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.month-item {
+  margin-bottom: 4px;
+}
+
+.month-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.month-link:hover {
+  background: #f8fafc;
+  border-color: var(--border);
+}
+
+.month-link.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.month-link.active:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.month-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.month-link.has-data .month-indicator {
+  opacity: 1;
+}
+
+.month-link.active .month-indicator {
+  background: white;
+  opacity: 1;
+}
+
 .container { width: min(1100px, 92%); margin: 24px auto; }
 
 /* Header with logo */
@@ -64,6 +157,21 @@ tfoot td { font-weight: 700; background: #f8fafc; position: sticky; bottom: 0; }
 
 /* Responsive design */
 @media (max-width: 768px) {
+  .app-layout { flex-direction: column; }
+  .sidebar { 
+    width: 100%; 
+    height: auto; 
+    position: static; 
+    border-right: none; 
+    border-bottom: 1px solid var(--border);
+    padding: 16px 0;
+  }
+  .month-nav { padding: 0 16px; }
+  .month-list { display: flex; overflow-x: auto; gap: 8px; }
+  .month-item { margin-bottom: 0; flex-shrink: 0; }
+  .month-link { white-space: nowrap; min-width: 80px; justify-content: center; }
+  .month-indicator { display: none; }
+  
   .logo-section { flex-direction: column; align-items: flex-start; gap: 12px; }
   .logo { height: 40px; }
   .title-section h1 { font-size: 24px; }
@@ -75,6 +183,7 @@ tfoot td { font-weight: 700; background: #f8fafc; position: sticky; bottom: 0; }
   .title-section h1 { font-size: 20px; }
   .filters { grid-template-columns: 1fr; }
   .filters .full { grid-template-columns: 1fr; }
+  .month-link { padding: 8px 12px; font-size: 14px; }
 }
 
 

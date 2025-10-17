@@ -18,6 +18,42 @@ export default function Home() {
   const [showSavedCSVs, setShowSavedCSVs] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [loadingCSVs, setLoadingCSVs] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth()); // 0-11
+  const [monthlyData, setMonthlyData] = useState({}); // {0: {pivot, rawRows, excludedClientes, ...}, 1: {...}, ...}
+
+  // Obtener datos del mes actual
+  const currentMonthData = useMemo(() => {
+    return monthlyData[currentMonth] || {
+      pivot: null,
+      rawRows: [],
+      excludedClientes: [],
+      excludedEmpleados: [],
+      dateFrom: "",
+      dateTo: "",
+      hasData: false
+    };
+  }, [monthlyData, currentMonth]);
+
+  // Actualizar datos del mes actual
+  const updateCurrentMonthData = useCallback((updates) => {
+    setMonthlyData(prev => ({
+      ...prev,
+      [currentMonth]: {
+        ...prev[currentMonth],
+        ...updates
+      }
+    }));
+  }, [currentMonth]);
+
+  // Sincronizar estado local con datos del mes
+  const syncWithCurrentMonth = useCallback(() => {
+    setPivot(currentMonthData.pivot);
+    setRawRows(currentMonthData.rawRows);
+    setExcludedClientes(currentMonthData.excludedClientes || []);
+    setExcludedEmpleados(currentMonthData.excludedEmpleados || []);
+    setDateFrom(currentMonthData.dateFrom || "");
+    setDateTo(currentMonthData.dateTo || "");
+  }, [currentMonthData]);
 
   const handleFile = useCallback((file) => {
     if (!file) return;
@@ -27,14 +63,23 @@ export default function Home() {
         skipEmptyLines: true,
         complete: (results) => {
           const rows = results.data;
+          const p = buildPivot(applyFilters(rows, currentMonthData.excludedClientes || [], currentMonthData.excludedEmpleados || [], currentMonthData.dateFrom || "", currentMonthData.dateTo || ""));
+          
+          // Actualizar datos del mes actual
+          updateCurrentMonthData({
+            pivot: p,
+            rawRows: rows,
+            hasData: true
+          });
+          
+          // Sincronizar estado local
           setRawRows(rows);
-          const p = buildPivot(applyFilters(rows, excludedClientes, excludedEmpleados, dateFrom, dateTo));
           setPivot(p);
         },
         error: (err) => alert("Error leyendo CSV: " + err.message),
       });
     });
-  }, []);
+  }, [currentMonthData, updateCurrentMonthData]);
 
   // Función para subir CSV a Supabase
   const uploadCSVToServer = useCallback(async (file) => {
@@ -185,8 +230,33 @@ export default function Home() {
   // recompute pivot when filters change
   const recompute = useCallback(() => {
     if (!rawRows?.length) return;
-    setPivot(buildPivot(applyFilters(rawRows, excludedClientes, excludedEmpleados, dateFrom, dateTo)));
-  }, [rawRows, excludedClientes, excludedEmpleados, dateFrom, dateTo]);
+    const newPivot = buildPivot(applyFilters(rawRows, excludedClientes, excludedEmpleados, dateFrom, dateTo));
+    setPivot(newPivot);
+    
+    // Actualizar datos del mes actual
+    updateCurrentMonthData({
+      pivot: newPivot,
+      excludedClientes,
+      excludedEmpleados,
+      dateFrom,
+      dateTo
+    });
+  }, [rawRows, excludedClientes, excludedEmpleados, dateFrom, dateTo, updateCurrentMonthData]);
+
+  // Nombres de los meses
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  // Cambiar de mes
+  const changeMonth = useCallback((monthIndex) => {
+    setCurrentMonth(monthIndex);
+    // Sincronizar con los datos del nuevo mes
+    setTimeout(() => {
+      syncWithCurrentMonth();
+    }, 0);
+  }, [syncWithCurrentMonth]);
 
   return (
     <>
@@ -197,18 +267,42 @@ export default function Home() {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </Head>
-      <header className="container">
-        <div className="header-content">
-          <div className="logo-section">
-            <img src="/logo-guinda.png" alt="Guinda" className="logo" />
-            <div className="title-section">
-              <h1>Guinda Time Pivot</h1>
-              <p>Arrastra y suelta tu CSV exportado de ClickUp o selecciónalo con el botón.</p>
-            </div>
+      
+      <div className="app-layout">
+        {/* Sidebar con meses */}
+        <aside className="sidebar">
+          <div className="month-nav">
+            <h3>Meses</h3>
+            <ul className="month-list">
+              {monthNames.map((month, index) => (
+                <li key={index} className="month-item">
+                  <button
+                    className={`month-link ${index === currentMonth ? 'active' : ''} ${monthlyData[index]?.hasData ? 'has-data' : ''}`}
+                    onClick={() => changeMonth(index)}
+                  >
+                    <span>{month}</span>
+                    <div className="month-indicator" />
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
-      </header>
-      <main className="container">
+        </aside>
+
+        {/* Contenido principal */}
+        <main className="main-content">
+          <div className="container">
+            <header>
+              <div className="header-content">
+                <div className="logo-section">
+                  <img src="/logo-guinda.png" alt="Guinda" className="logo" />
+                  <div className="title-section">
+                    <h1>Guinda Time Pivot - {monthNames[currentMonth]}</h1>
+                    <p>Arrastra y suelta tu CSV exportado de ClickUp o selecciónalo con el botón.</p>
+                  </div>
+                </div>
+              </div>
+            </header>
         <section
           className="uploader"
           ref={dropRef}
@@ -379,12 +473,15 @@ export default function Home() {
             )}
           </>
         )}
-      </main>
-      <footer className="container footnote">
-        <small>Datos procesados localmente en tu navegador. No se suben a ningún servidor.</small>
-      </footer>
-    </>
-  );
+        
+        <footer className="footnote">
+          <small>Datos procesados localmente en tu navegador. No se suben a ningún servidor.</small>
+        </footer>
+      </div>
+    </main>
+  </div>
+</>
+);
 }
 
 function PivotTable({ pivot, decimal }) {
