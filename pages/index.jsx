@@ -14,6 +14,10 @@ export default function Home() {
   const [clientSearch, setClientSearch] = useState("");
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [savedCSVs, setSavedCSVs] = useState([]);
+  const [showSavedCSVs, setShowSavedCSVs] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [loadingCSVs, setLoadingCSVs] = useState(false);
 
   const handleFile = useCallback((file) => {
     if (!file) return;
@@ -32,10 +36,102 @@ export default function Home() {
     });
   }, []);
 
+  // Función para subir CSV a Supabase
+  const uploadCSVToServer = useCallback(async (file) => {
+    if (!file) return;
+    
+    setUploading(true);
+    try {
+      const fileName = `guinda-${Date.now()}-${file.name}`;
+      const fileContent = await file.text();
+      const base64Content = btoa(fileContent);
+      
+      const response = await fetch('/api/csv/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName, fileContent: base64Content })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        alert('CSV guardado correctamente en el servidor');
+        loadSavedCSVs(); // Recargar la lista
+      } else {
+        alert('Error guardando CSV: ' + result.error);
+      }
+    } catch (error) {
+      alert('Error guardando CSV: ' + error.message);
+    } finally {
+      setUploading(false);
+    }
+  }, []);
+
+  // Función para cargar CSVs guardados
+  const loadSavedCSVs = useCallback(async () => {
+    setLoadingCSVs(true);
+    try {
+      const response = await fetch('/api/csv/list');
+      const result = await response.json();
+      if (result.success) {
+        setSavedCSVs(result.data);
+      } else {
+        console.error('Error cargando CSVs:', result.error);
+      }
+    } catch (error) {
+      console.error('Error cargando CSVs:', error);
+    } finally {
+      setLoadingCSVs(false);
+    }
+  }, []);
+
+  // Función para cargar un CSV guardado
+  const loadSavedCSV = useCallback(async (fileName) => {
+    try {
+      const response = await fetch(`/api/csv/download?fileName=${encodeURIComponent(fileName)}`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const file = new File([blob], fileName, { type: 'text/csv' });
+        handleFile(file);
+        setShowSavedCSVs(false);
+      } else {
+        alert('Error cargando CSV guardado');
+      }
+    } catch (error) {
+      alert('Error cargando CSV: ' + error.message);
+    }
+  }, [handleFile]);
+
+  // Función para eliminar un CSV guardado
+  const deleteSavedCSV = useCallback(async (fileName) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este CSV?')) return;
+    
+    try {
+      const response = await fetch('/api/csv/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        alert('CSV eliminado correctamente');
+        loadSavedCSVs(); // Recargar la lista
+      } else {
+        alert('Error eliminando CSV: ' + result.error);
+      }
+    } catch (error) {
+      alert('Error eliminando CSV: ' + error.message);
+    }
+  }, [loadSavedCSVs]);
+
   const onDrop = useCallback((e) => {
     e.preventDefault();
     const file = e.dataTransfer?.files?.[0];
-    if (file) handleFile(file);
+    if (file) {
+      handleFile(file);
+      // Opcional: guardar automáticamente en el servidor
+      // uploadCSVToServer(file);
+    }
   }, [handleFile]);
 
   const onDragOver = (e) => e.preventDefault();
@@ -133,6 +229,9 @@ export default function Home() {
             <section className="controls" style={{marginTop:12}}>
               <div className="controls__row">
                 <button onClick={()=> setShowFilters(v => !v)} className="btn btn--secondary">{showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}</button>
+                <button onClick={()=> { setShowSavedCSVs(v => !v); if (!showSavedCSVs) loadSavedCSVs(); }} className="btn btn--secondary">
+                  {showSavedCSVs ? 'Ocultar CSVs guardados' : 'Ver CSVs guardados'}
+                </button>
                 <div className="spacer" />
                 <label className="switch">
                   <input type="checkbox" checked={decimal} onChange={(e) => setDecimal(e.target.checked)} />
@@ -192,10 +291,71 @@ export default function Home() {
               </label>
             </section>
             )}
+
+            {showSavedCSVs && (
+              <section className="saved-csvs" style={{background:'#fff', border:'1px solid var(--border)', borderRadius:12, padding:12, boxShadow:'var(--shadow)', marginTop:12}}>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+                  <h3 style={{margin:0, fontSize:16, fontWeight:600}}>CSVs Guardados</h3>
+                  <button onClick={loadSavedCSVs} className="btn btn--secondary" disabled={loadingCSVs}>
+                    {loadingCSVs ? 'Cargando...' : 'Actualizar'}
+                  </button>
+                </div>
+                {loadingCSVs ? (
+                  <p style={{textAlign:'center', color:'var(--muted)', margin:20}}>Cargando CSVs...</p>
+                ) : savedCSVs.length === 0 ? (
+                  <p style={{textAlign:'center', color:'var(--muted)', margin:20}}>No hay CSVs guardados</p>
+                ) : (
+                  <div style={{display:'grid', gap:8, maxHeight:200, overflow:'auto'}}>
+                    {savedCSVs.map((csv) => (
+                      <div key={csv.name} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 12px', border:'1px solid var(--border)', borderRadius:8, background:'#f9fafb'}}>
+                        <div style={{flex:1, minWidth:0}}>
+                          <div style={{fontWeight:500, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                            {csv.name}
+                          </div>
+                          <div style={{fontSize:12, color:'var(--muted)'}}>
+                            {new Date(csv.created_at).toLocaleDateString('es-ES', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                        </div>
+                        <div style={{display:'flex', gap:8}}>
+                          <button 
+                            onClick={() => loadSavedCSV(csv.name)} 
+                            className="btn" 
+                            style={{padding:'6px 12px', fontSize:12}}
+                          >
+                            Cargar
+                          </button>
+                          <button 
+                            onClick={() => deleteSavedCSV(csv.name)} 
+                            className="btn btn--secondary" 
+                            style={{padding:'6px 12px', fontSize:12}}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
             <section className="controls">
               <div className="controls__row">
                 <button onClick={exportXlsx} className="btn">Exportar Excel</button>
                 <button onClick={exportCsv} className="btn btn--secondary">Exportar CSV</button>
+                <button 
+                  onClick={() => uploadCSVToServer(fileInputRef.current?.files?.[0] || new File([], 'current.csv'))} 
+                  className="btn btn--secondary" 
+                  disabled={!rawRows.length || uploading}
+                >
+                  {uploading ? 'Guardando...' : 'Guardar CSV en servidor'}
+                </button>
                 <div className="spacer" />
               </div>
             </section>
