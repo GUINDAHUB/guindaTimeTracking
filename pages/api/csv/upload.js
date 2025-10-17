@@ -12,13 +12,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'fileName and fileContent are required' })
     }
 
-    // Convertir el contenido base64 a Blob
+    // Convertir el contenido base64 a Blob (manejo UTF-8)
     const binaryString = atob(fileContent)
     const bytes = new Uint8Array(binaryString.length)
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i)
     }
-    const blob = new Blob([bytes], { type: 'text/csv' })
+    const blob = new Blob([bytes], { type: 'text/csv; charset=utf-8' })
 
     const result = await uploadCSV(blob, fileName)
     

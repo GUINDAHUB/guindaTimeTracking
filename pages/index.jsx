@@ -44,7 +44,13 @@ export default function Home() {
     try {
       const fileName = `guinda-${Date.now()}-${file.name}`;
       const fileContent = await file.text();
-      const base64Content = btoa(fileContent);
+      
+      // Función para convertir UTF-8 a base64 de forma segura
+      const utf8ToBase64 = (str) => {
+        return btoa(unescape(encodeURIComponent(str)));
+      };
+      
+      const base64Content = utf8ToBase64(fileContent);
       
       const response = await fetch('/api/csv/upload', {
         method: 'POST',

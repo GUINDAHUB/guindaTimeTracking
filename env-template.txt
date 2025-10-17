@@ -1,0 +1,15 @@
+# Archivo de configuración para Supabase
+# Copia este contenido a un archivo llamado .env.local en la raíz del proyecto
+
+NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key_aqui
+
+# Instrucciones paso a paso:
+# 1. Crea un archivo llamado .env.local en la raíz del proyecto
+# 2. Copia el contenido de arriba al archivo .env.local
+# 3. Ve a https://supabase.com y crea un nuevo proyecto
+# 4. En el dashboard, ve a Settings > API
+# 5. Copia la URL del proyecto (algo como https://abcdefghijklmnop.supabase.co)
+# 6. Copia la anon public key (una cadena larga que empieza con eyJ...)
+# 7. Reemplaza los valores en .env.local con los reales
+# 8. Reinicia el servidor de desarrollo: npm run dev
