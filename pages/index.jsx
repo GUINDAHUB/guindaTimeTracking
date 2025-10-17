@@ -328,7 +328,6 @@ export default function Home() {
           ref={dropRef}
           onDrop={onDrop}
           onDragOver={onDragOver}
-          onClick={() => fileInputRef.current?.click()}
         >
           <div className="uploader__inner">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -336,7 +335,7 @@ export default function Home() {
               <path d="M20 16v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <p><strong>Suelta el CSV aquí</strong> o</p>
-            <label className="btn">
+            <label className="btn" onClick={() => fileInputRef.current?.click()}>
               Seleccionar archivo
               <input ref={fileInputRef} type="file" accept=".csv" hidden onChange={(e) => handleFile(e.target.files?.[0])} />
             </label>
