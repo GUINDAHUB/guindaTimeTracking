@@ -314,11 +314,6 @@ export default function Home() {
                   <div className="title-section">
                     <h1>Guinda Time Pivot - {monthNames[currentMonth]}</h1>
                     <p>Arrastra y suelta tu CSV exportado de ClickUp o selecciónalo con el botón.</p>
-                    {currentMonthData.hasData && (
-                      <div style={{marginTop: 8, padding: '6px 12px', background: '#ecfeff', border: '1px solid #bae6fd', borderRadius: 6, fontSize: 14, color: '#0369a1'}}>
-                        ✓ Datos cargados para {monthNames[currentMonth]}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
