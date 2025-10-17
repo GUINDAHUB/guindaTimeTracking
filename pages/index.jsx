@@ -1,5 +1,5 @@
 import Head from "next/head";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export default function Home() {
   const dropRef = useRef(null);
@@ -20,6 +20,19 @@ export default function Home() {
   const [loadingCSVs, setLoadingCSVs] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth()); // 0-11
   const [monthlyData, setMonthlyData] = useState({}); // {0: {pivot, rawRows, excludedClientes, ...}, 1: {...}, ...}
+
+  // Obtener datos del mes actual
+  const currentMonthData = useMemo(() => {
+    return monthlyData[currentMonth] || {
+      pivot: null,
+      rawRows: [],
+      excludedClientes: [],
+      excludedEmpleados: [],
+      dateFrom: "",
+      dateTo: "",
+      hasData: false
+    };
+  }, [monthlyData, currentMonth]);
 
   // Actualizar datos del mes actual
   const updateCurrentMonthData = useCallback((updates) => {
@@ -52,16 +65,16 @@ export default function Home() {
           const rows = results.data;
           const p = buildPivot(applyFilters(rows, currentMonthData.excludedClientes || [], currentMonthData.excludedEmpleados || [], currentMonthData.dateFrom || "", currentMonthData.dateTo || ""));
           
-          // Actualizar datos del mes actual
+          // Actualizar estado local primero
+          setRawRows(rows);
+          setPivot(p);
+          
+          // Luego actualizar datos del mes actual
           updateCurrentMonthData({
             pivot: p,
             rawRows: rows,
             hasData: true
           });
-          
-          // Sincronizar estado local
-          setRawRows(rows);
-          setPivot(p);
         },
         error: (err) => alert("Error leyendo CSV: " + err.message),
       });
@@ -238,12 +251,27 @@ export default function Home() {
 
   // Cambiar de mes
   const changeMonth = useCallback((monthIndex) => {
+    // Primero guardar los datos del mes actual
+    if (rawRows.length > 0) {
+      updateCurrentMonthData({
+        pivot,
+        rawRows,
+        excludedClientes,
+        excludedEmpleados,
+        dateFrom,
+        dateTo,
+        hasData: true
+      });
+    }
+    
+    // Cambiar al nuevo mes
     setCurrentMonth(monthIndex);
-    // Sincronizar con los datos del nuevo mes
-    setTimeout(() => {
-      syncWithCurrentMonth();
-    }, 0);
-  }, [syncWithCurrentMonth]);
+  }, [rawRows, pivot, excludedClientes, excludedEmpleados, dateFrom, dateTo, updateCurrentMonthData]);
+
+  // Efecto para sincronizar cuando cambia el mes
+  useEffect(() => {
+    syncWithCurrentMonth();
+  }, [currentMonth, syncWithCurrentMonth]);
 
   return (
     <>
@@ -286,6 +314,11 @@ export default function Home() {
                   <div className="title-section">
                     <h1>Guinda Time Pivot - {monthNames[currentMonth]}</h1>
                     <p>Arrastra y suelta tu CSV exportado de ClickUp o selecciónalo con el botón.</p>
+                    {currentMonthData.hasData && (
+                      <div style={{marginTop: 8, padding: '6px 12px', background: '#ecfeff', border: '1px solid #bae6fd', borderRadius: 6, fontSize: 14, color: '#0369a1'}}>
+                        ✓ Datos cargados para {monthNames[currentMonth]}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
