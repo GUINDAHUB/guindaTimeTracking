@@ -21,19 +21,6 @@ export default function Home() {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth()); // 0-11
   const [monthlyData, setMonthlyData] = useState({}); // {0: {pivot, rawRows, excludedClientes, ...}, 1: {...}, ...}
 
-  // Obtener datos del mes actual
-  const currentMonthData = useMemo(() => {
-    return monthlyData[currentMonth] || {
-      pivot: null,
-      rawRows: [],
-      excludedClientes: [],
-      excludedEmpleados: [],
-      dateFrom: "",
-      dateTo: "",
-      hasData: false
-    };
-  }, [monthlyData, currentMonth]);
-
   // Actualizar datos del mes actual
   const updateCurrentMonthData = useCallback((updates) => {
     setMonthlyData(prev => ({
