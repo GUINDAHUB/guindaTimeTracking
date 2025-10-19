@@ -14,12 +14,34 @@ export default function Home() {
   const [clientSearch, setClientSearch] = useState("");
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [savedCSVs, setSavedCSVs] = useState([]);
-  const [showSavedCSVs, setShowSavedCSVs] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [loadingCSVs, setLoadingCSVs] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth()); // 0-11
   const [monthlyData, setMonthlyData] = useState({}); // {0: {pivot, rawRows, excludedClientes, ...}, 1: {...}, ...}
+
+  // Nombres de los meses
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  // Cargar datos guardados del localStorage al inicializar
+  useEffect(() => {
+    const savedData = localStorage.getItem('guinda-monthly-data');
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        setMonthlyData(parsedData);
+      } catch (error) {
+        console.error('Error cargando datos guardados:', error);
+      }
+    }
+  }, []);
+
+  // Guardar datos en localStorage cuando cambien
+  useEffect(() => {
+    if (Object.keys(monthlyData).length > 0) {
+      localStorage.setItem('guinda-monthly-data', JSON.stringify(monthlyData));
+    }
+  }, [monthlyData]);
 
   // Obtener datos del mes actual
   const currentMonthData = useMemo(() => {
@@ -81,99 +103,6 @@ export default function Home() {
     });
   }, [currentMonthData, updateCurrentMonthData]);
 
-  // Función para subir CSV a Supabase
-  const uploadCSVToServer = useCallback(async (file) => {
-    if (!file) return;
-    
-    setUploading(true);
-    try {
-      const fileName = `guinda-${Date.now()}-${file.name}`;
-      const fileContent = await file.text();
-      
-      // Función para convertir UTF-8 a base64 de forma segura
-      const utf8ToBase64 = (str) => {
-        return btoa(unescape(encodeURIComponent(str)));
-      };
-      
-      const base64Content = utf8ToBase64(fileContent);
-      
-      const response = await fetch('/api/csv/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName, fileContent: base64Content })
-      });
-      
-      const result = await response.json();
-      if (result.success) {
-        alert('CSV guardado correctamente en el servidor');
-        loadSavedCSVs(); // Recargar la lista
-      } else {
-        alert('Error guardando CSV: ' + result.error);
-      }
-    } catch (error) {
-      alert('Error guardando CSV: ' + error.message);
-    } finally {
-      setUploading(false);
-    }
-  }, []);
-
-  // Función para cargar CSVs guardados
-  const loadSavedCSVs = useCallback(async () => {
-    setLoadingCSVs(true);
-    try {
-      const response = await fetch('/api/csv/list');
-      const result = await response.json();
-      if (result.success) {
-        setSavedCSVs(result.data);
-      } else {
-        console.error('Error cargando CSVs:', result.error);
-      }
-    } catch (error) {
-      console.error('Error cargando CSVs:', error);
-    } finally {
-      setLoadingCSVs(false);
-    }
-  }, []);
-
-  // Función para cargar un CSV guardado
-  const loadSavedCSV = useCallback(async (fileName) => {
-    try {
-      const response = await fetch(`/api/csv/download?fileName=${encodeURIComponent(fileName)}`);
-      if (response.ok) {
-        const blob = await response.blob();
-        const file = new File([blob], fileName, { type: 'text/csv' });
-        handleFile(file);
-        setShowSavedCSVs(false);
-      } else {
-        alert('Error cargando CSV guardado');
-      }
-    } catch (error) {
-      alert('Error cargando CSV: ' + error.message);
-    }
-  }, [handleFile]);
-
-  // Función para eliminar un CSV guardado
-  const deleteSavedCSV = useCallback(async (fileName) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este CSV?')) return;
-    
-    try {
-      const response = await fetch('/api/csv/delete', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName })
-      });
-      
-      const result = await response.json();
-      if (result.success) {
-        alert('CSV eliminado correctamente');
-        loadSavedCSVs(); // Recargar la lista
-      } else {
-        alert('Error eliminando CSV: ' + result.error);
-      }
-    } catch (error) {
-      alert('Error eliminando CSV: ' + error.message);
-    }
-  }, [loadSavedCSVs]);
 
   const onDrop = useCallback((e) => {
     e.preventDefault();
@@ -189,12 +118,17 @@ export default function Home() {
 
   const exportXlsx = useCallback(async () => {
     if (!pivot) return;
-    const XLSX = (await import("xlsx")).default;
-    const aoa = pivotToAOA(pivot, decimal, true);
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    XLSX.utils.book_append_sheet(wb, ws, "Pivot");
-    XLSX.writeFile(wb, "guinda-time-pivot.xlsx");
+    try {
+      const XLSX = await import("xlsx");
+      const aoa = pivotToAOA(pivot, decimal, true);
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      XLSX.utils.book_append_sheet(wb, ws, "Pivot");
+      XLSX.writeFile(wb, "guinda-time-pivot.xlsx");
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      alert('Error exportando a Excel: ' + error.message);
+    }
   }, [pivot, decimal]);
 
   const exportCsv = useCallback(() => {
@@ -243,12 +177,6 @@ export default function Home() {
     });
   }, [rawRows, excludedClientes, excludedEmpleados, dateFrom, dateTo, updateCurrentMonthData]);
 
-  // Nombres de los meses
-  const monthNames = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
-
   // Cambiar de mes
   const changeMonth = useCallback((monthIndex) => {
     // Primero guardar los datos del mes actual
@@ -272,6 +200,32 @@ export default function Home() {
   useEffect(() => {
     syncWithCurrentMonth();
   }, [currentMonth, syncWithCurrentMonth]);
+
+  // Función para limpiar datos del mes actual
+  const clearCurrentMonthData = useCallback(() => {
+    if (confirm(`¿Estás seguro de que quieres eliminar los datos de ${monthNames[currentMonth]}?`)) {
+      // Limpiar datos del mes actual
+      updateCurrentMonthData({
+        pivot: null,
+        rawRows: [],
+        excludedClientes: [],
+        excludedEmpleados: [],
+        dateFrom: "",
+        dateTo: "",
+        hasData: false
+      });
+      
+      // Limpiar estado local
+      setPivot(null);
+      setRawRows([]);
+      setExcludedClientes([]);
+      setExcludedEmpleados([]);
+      setDateFrom("");
+      setDateTo("");
+      
+      alert(`Datos de ${monthNames[currentMonth]} eliminados`);
+    }
+  }, [currentMonth, monthNames, updateCurrentMonthData]);
 
   return (
     <>
@@ -330,7 +284,7 @@ export default function Home() {
               <path d="M20 16v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <p><strong>Suelta el CSV aquí</strong> o</p>
-            <label className="btn" onClick={() => fileInputRef.current?.click()}>
+            <label className="btn">
               Seleccionar archivo
               <input ref={fileInputRef} type="file" accept=".csv" hidden onChange={(e) => handleFile(e.target.files?.[0])} />
             </label>
@@ -343,9 +297,6 @@ export default function Home() {
             <section className="controls" style={{marginTop:12}}>
               <div className="controls__row">
                 <button onClick={()=> setShowFilters(v => !v)} className="btn btn--secondary">{showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}</button>
-                <button onClick={()=> { setShowSavedCSVs(v => !v); if (!showSavedCSVs) loadSavedCSVs(); }} className="btn btn--secondary">
-                  {showSavedCSVs ? 'Ocultar CSVs guardados' : 'Ver CSVs guardados'}
-                </button>
                 <div className="spacer" />
                 <label className="switch">
                   <input type="checkbox" checked={decimal} onChange={(e) => setDecimal(e.target.checked)} />
@@ -406,69 +357,13 @@ export default function Home() {
             </section>
             )}
 
-            {showSavedCSVs && (
-              <section className="saved-csvs" style={{background:'#fff', border:'1px solid var(--border)', borderRadius:12, padding:12, boxShadow:'var(--shadow)', marginTop:12}}>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-                  <h3 style={{margin:0, fontSize:16, fontWeight:600}}>CSVs Guardados</h3>
-                  <button onClick={loadSavedCSVs} className="btn btn--secondary" disabled={loadingCSVs}>
-                    {loadingCSVs ? 'Cargando...' : 'Actualizar'}
-                  </button>
-                </div>
-                {loadingCSVs ? (
-                  <p style={{textAlign:'center', color:'var(--muted)', margin:20}}>Cargando CSVs...</p>
-                ) : savedCSVs.length === 0 ? (
-                  <p style={{textAlign:'center', color:'var(--muted)', margin:20}}>No hay CSVs guardados</p>
-                ) : (
-                  <div style={{display:'grid', gap:8, maxHeight:200, overflow:'auto'}}>
-                    {savedCSVs.map((csv) => (
-                      <div key={csv.name} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 12px', border:'1px solid var(--border)', borderRadius:8, background:'#f9fafb'}}>
-                        <div style={{flex:1, minWidth:0}}>
-                          <div style={{fontWeight:500, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-                            {csv.name}
-                          </div>
-                          <div style={{fontSize:12, color:'var(--muted)'}}>
-                            {new Date(csv.created_at).toLocaleDateString('es-ES', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </div>
-                        </div>
-                        <div style={{display:'flex', gap:8}}>
-                          <button 
-                            onClick={() => loadSavedCSV(csv.name)} 
-                            className="btn" 
-                            style={{padding:'6px 12px', fontSize:12}}
-                          >
-                            Cargar
-                          </button>
-                          <button 
-                            onClick={() => deleteSavedCSV(csv.name)} 
-                            className="btn btn--secondary" 
-                            style={{padding:'6px 12px', fontSize:12}}
-                          >
-                            Eliminar
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            )}
 
             <section className="controls">
               <div className="controls__row">
                 <button onClick={exportXlsx} className="btn">Exportar Excel</button>
                 <button onClick={exportCsv} className="btn btn--secondary">Exportar CSV</button>
-                <button 
-                  onClick={() => uploadCSVToServer(fileInputRef.current?.files?.[0] || new File([], 'current.csv'))} 
-                  className="btn btn--secondary" 
-                  disabled={!rawRows.length || uploading}
-                >
-                  {uploading ? 'Guardando...' : 'Guardar CSV en servidor'}
+                <button onClick={clearCurrentMonthData} className="btn btn--secondary" style={{background: '#ef4444', color: 'white'}}>
+                  Limpiar datos del mes
                 </button>
                 <div className="spacer" />
               </div>
